@@ -1,15 +1,36 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { Users, Stethoscope, Calendar, Home, Menu, X } from 'lucide-svelte';
-	import { Button } from '$lib/components/ui/button';
+	import {
+		Users,
+		Stethoscope,
+		Calendar,
+		Home,
+		Menu,
+		X,
+		PawPrint,
+		Palette,
+		Sun,
+		Moon,
+		Sparkles
+	} from 'lucide-svelte';
+	import { Button, buttonVariants } from '$lib/components/ui/button';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+	import { themeStore, type Theme } from '$lib/stores/theme.svelte';
 
 	let mobileMenuOpen = $state(false);
 
 	const navItems = [
 		{ href: '/', label: 'Home', icon: Home },
 		{ href: '/owners', label: 'Owners', icon: Users },
+		{ href: '/pets', label: 'Pets', icon: PawPrint },
 		{ href: '/vets', label: 'Veterinarians', icon: Stethoscope },
 		{ href: '/visits', label: 'Visits', icon: Calendar }
+	];
+
+	const themeOptions: { value: Theme; label: string; icon: typeof Sun }[] = [
+		{ value: 'light', label: 'Light', icon: Sun },
+		{ value: 'dark', label: 'Dark', icon: Moon },
+		{ value: 'fancy', label: 'Fancy', icon: Sparkles }
 	];
 
 	function isActive(href: string): boolean {
@@ -49,19 +70,45 @@
 			</nav>
 
 			<!-- Mobile Menu Button -->
-			<Button
-				variant="ghost"
-				size="icon"
-				class="md:hidden"
-				onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
-				aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-			>
-				{#if mobileMenuOpen}
-					<X class="h-5 w-5" />
-				{:else}
-					<Menu class="h-5 w-5" />
-				{/if}
-			</Button>
+			<div class="flex items-center gap-1">
+				<DropdownMenu.Root>
+					<DropdownMenu.Trigger
+						class={buttonVariants({ variant: 'ghost', size: 'icon' })}
+						aria-label="Choose theme"
+					>
+						<Palette class="h-5 w-5" />
+					</DropdownMenu.Trigger>
+					<DropdownMenu.Content align="end">
+						<DropdownMenu.Label>Theme</DropdownMenu.Label>
+						<DropdownMenu.Separator />
+						<DropdownMenu.RadioGroup
+							value={themeStore.current}
+							onValueChange={(value) => themeStore.set(value as Theme)}
+						>
+							{#each themeOptions as option (option.value)}
+								<DropdownMenu.RadioItem value={option.value} class="gap-2">
+									<option.icon class="h-4 w-4" />
+									{option.label}
+								</DropdownMenu.RadioItem>
+							{/each}
+						</DropdownMenu.RadioGroup>
+					</DropdownMenu.Content>
+				</DropdownMenu.Root>
+
+				<Button
+					variant="ghost"
+					size="icon"
+					class="md:hidden"
+					onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
+					aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+				>
+					{#if mobileMenuOpen}
+						<X class="h-5 w-5" />
+					{:else}
+						<Menu class="h-5 w-5" />
+					{/if}
+				</Button>
+			</div>
 		</div>
 
 		<!-- Mobile Navigation -->
