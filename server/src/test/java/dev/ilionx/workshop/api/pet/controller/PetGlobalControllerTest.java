@@ -2,6 +2,7 @@ package dev.ilionx.workshop.api.pet.controller;
 
 import dev.ilionx.workshop.api.owner.model.Owner;
 import dev.ilionx.workshop.api.pet.model.Pet;
+import dev.ilionx.workshop.api.pet.model.PetType;
 import dev.ilionx.workshop.api.pet.model.request.CreatePetRequest;
 import dev.ilionx.workshop.api.pet.model.request.UpdatePetRequest;
 import dev.ilionx.workshop.api.pet.model.response.PetResponse;
@@ -37,6 +38,29 @@ class PetGlobalControllerTest extends IntegrationTest {
     private static final LocalDate PET_BIRTH_DATE = LocalDate.of(2020, 9, 7);
     private static final String UPDATED_PET_NAME = "Max";
 
+    // ========================= TEST HELPERS =========================
+    private Pet aSavedPetNamed(final Owner owner, final String name) {
+        final PetType petType = petTypeRepository.findById(1)
+            .orElseThrow(() -> new RuntimeException("Pet type with ID 1 not found in seed data"));
+        final Pet pet = new Pet();
+        pet.setName(name);
+        pet.setBirthDate(PET_BIRTH_DATE);
+        pet.setType(petType);
+        pet.setOwner(owner);
+        return petRepository.save(pet);
+    }
+
+    private Owner aSavedSecondOwner() {
+        final Owner owner = new Owner();
+        owner.setFirstName("Betty");
+        owner.setLastName("Davis");
+        owner.setAddress("638 Cardinal Ave.");
+        owner.setCity("Sun Prairie");
+        owner.setTelephone("6085551749");
+        return ownerRepository.save(owner);
+    }
+
+
     // ========================= LIST =========================
     @Test
     @DisplayName("Should return all pets when pets exist")
@@ -63,6 +87,91 @@ class PetGlobalControllerTest extends IntegrationTest {
         // When: Requesting all pets
         // Then: Should return 200 with empty array
         mockMvc.perform(get(PETS))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    @DisplayName("Should return pets from multiple different owners when listing all pets")
+    void shouldReturnPetsFromMultipleDifferentOwnersWhenListingAllPets() throws Exception {
+        // Given: Two different owners, each with their own pet
+        final Owner firstOwner = aSavedOwner();
+        final Pet firstPet = aSavedPet(firstOwner);
+
+        final Owner secondOwner = aSavedSecondOwner();
+        final Pet secondPet = aSavedPetNamed(secondOwner, UPDATED_PET_NAME);
+
+        // When: Requesting all pets
+        // Then: Both pets should be returned, each correctly associated with its own owner
+        mockMvc.perform(get(PETS))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(2)))
+            .andExpect(jsonPath("$[0].id", is(equalTo(firstPet.getId()))))
+            .andExpect(jsonPath("$[0].name", is(equalTo(PET_NAME))))
+            .andExpect(jsonPath("$[0].ownerId", is(equalTo(firstOwner.getId()))))
+            .andExpect(jsonPath("$[1].id", is(equalTo(secondPet.getId()))))
+            .andExpect(jsonPath("$[1].name", is(equalTo(UPDATED_PET_NAME))))
+            .andExpect(jsonPath("$[1].ownerId", is(equalTo(secondOwner.getId()))));
+    }
+
+    // ========================= SEARCH BY NAME =========================
+    @Test
+    @DisplayName("Should return pets matching name when name query param provided")
+    void shouldReturnPetsByName() throws Exception {
+        // Given: Two pets with different names exist in the database
+        final Owner owner = aSavedOwner();
+        final Pet buddy = aSavedPetNamed(owner, "Buddy");
+        aSavedPetNamed(owner, "Whiskers");
+
+        // When: Searching for pets by name
+        // Then: Only the matching pet should be returned
+        mockMvc.perform(get(PETS).param("name", "Buddy"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].id", is(equalTo(buddy.getId()))))
+            .andExpect(jsonPath("$[0].name", is(equalTo("Buddy"))));
+    }
+
+    @Test
+    @DisplayName("Should search pets by name case-insensitively")
+    void shouldSearchCaseInsensitively() throws Exception {
+        // Given: A pet named "Buddy" exists in the database
+        final Owner owner = aSavedOwner();
+        final Pet buddy = aSavedPetNamed(owner, "Buddy");
+
+        // When: Searching with a lowercase name
+        // Then: The pet should still be found regardless of case
+        mockMvc.perform(get(PETS).param("name", "buddy"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].id", is(equalTo(buddy.getId()))));
+    }
+
+    @Test
+    @DisplayName("Should return all pets when name query param is empty")
+    void shouldReturnAllPetsWhenNameIsEmpty() throws Exception {
+        // Given: Two pets exist in the database
+        final Owner owner = aSavedOwner();
+        aSavedPetNamed(owner, "Buddy");
+        aSavedPetNamed(owner, "Whiskers");
+
+        // When: Searching with an empty name query param
+        // Then: All pets should be returned, unfiltered
+        mockMvc.perform(get(PETS).param("name", ""))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(2)));
+    }
+
+    @Test
+    @DisplayName("Should return empty list when no pets match name")
+    void shouldReturnEmptyListWhenNoPetsMatchName() throws Exception {
+        // Given: A pet named "Buddy" exists in the database
+        final Owner owner = aSavedOwner();
+        aSavedPetNamed(owner, "Buddy");
+
+        // When: Searching for a name that does not match any pet
+        // Then: An empty list should be returned
+        mockMvc.perform(get(PETS).param("name", "NonExistentPetName12345"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$", hasSize(0)));
     }

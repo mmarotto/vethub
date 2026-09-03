@@ -126,6 +126,21 @@ public class PetService {
     }
 
     /**
+     * Finds pets whose name contains the given search term, ignoring case.
+     * When no search term is provided, returns all pets.
+     *
+     * @param name the name search term, or {@code null}/blank to return all pets
+     * @return list of matching pets
+     */
+    @Transactional(readOnly = true)
+    public List<Pet> findByName(final String name) {
+        if (name == null || name.isBlank()) {
+            return petRepository.findAll();
+        }
+        return petRepository.findByNameContainingIgnoreCase(name);
+    }
+
+    /**
      * Deletes a pet by its unique identifier.
      *
      * @param petId the pet's unique identifier
