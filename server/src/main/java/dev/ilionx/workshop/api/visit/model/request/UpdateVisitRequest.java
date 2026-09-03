@@ -30,4 +30,25 @@ public class UpdateVisitRequest {
     )
     private String description;
 
+    @Schema(
+        description = "Diagnosis made during the visit",
+        example = "Ear mites",
+        requiredMode = Schema.RequiredMode.NOT_REQUIRED
+    )
+    private String diagnosis;
+
+    @Schema(
+        description = "Treatment given during the visit",
+        example = "Ear drops",
+        requiredMode = Schema.RequiredMode.NOT_REQUIRED
+    )
+    private String treatment;
+
+    @Schema(
+        description = "ID of the vet who handled the visit",
+        example = "1",
+        requiredMode = Schema.RequiredMode.NOT_REQUIRED
+    )
+    private Integer vetId;
+
 }

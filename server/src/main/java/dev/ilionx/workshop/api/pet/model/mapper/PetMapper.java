@@ -5,6 +5,8 @@ import dev.ilionx.workshop.api.pet.model.PetType;
 import dev.ilionx.workshop.api.pet.model.response.PetResponse;
 import dev.ilionx.workshop.api.pet.model.response.PetTypeResponse;
 import dev.ilionx.workshop.api.pet.model.response.VisitSummaryResponse;
+import dev.ilionx.workshop.api.vet.model.Vet;
+import dev.ilionx.workshop.api.vet.model.response.VetSummaryResponse;
 import dev.ilionx.workshop.api.visit.model.Visit;
 import io.github.jframe.util.mapper.config.SharedMapperConfig;
 
@@ -30,4 +32,6 @@ public abstract class PetMapper {
     public abstract PetTypeResponse toPetTypeResponse(PetType petType);
 
     public abstract VisitSummaryResponse toVisitSummaryResponse(Visit visit);
+
+    public abstract VetSummaryResponse toVetSummaryResponse(Vet vet);
 }

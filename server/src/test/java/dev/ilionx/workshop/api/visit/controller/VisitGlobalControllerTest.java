@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import static dev.ilionx.workshop.api.Paths.VISITS;
 import static dev.ilionx.workshop.api.Paths.VISIT_BY_ID;
 import static dev.ilionx.workshop.common.exception.ApiErrorCode.PET_NOT_FOUND;
+import static dev.ilionx.workshop.common.exception.ApiErrorCode.VET_NOT_FOUND;
 import static dev.ilionx.workshop.common.exception.ApiErrorCode.VISIT_NOT_FOUND;
 import static io.github.jframe.util.mapper.ObjectMappers.fromJson;
 import static io.github.jframe.util.mapper.ObjectMappers.toJson;
@@ -33,6 +34,12 @@ class VisitGlobalControllerTest extends IntegrationTest {
 
     private static final int NON_EXISTENT_VISIT_ID = 999;
     private static final int NON_EXISTENT_PET_ID = 999;
+    private static final int NON_EXISTENT_VET_ID = 999;
+    private static final int SEEDED_VET_ID = 1;
+    private static final String SEEDED_VET_FIRST_NAME = "James";
+    private static final String SEEDED_VET_LAST_NAME = "Carter";
+    private static final String VISIT_DIAGNOSIS = "Ear mites";
+    private static final String VISIT_TREATMENT = "Ear drops";
 
     private static final String VISIT_DESCRIPTION = "Rabies shot";
     private static final LocalDate VISIT_DATE = LocalDate.of(2023, 1, 1);
@@ -56,7 +63,9 @@ class VisitGlobalControllerTest extends IntegrationTest {
             .andExpect(jsonPath("$[0].id", is(equalTo(visit.getId()))))
             .andExpect(jsonPath("$[0].date", is(notNullValue())))
             .andExpect(jsonPath("$[0].description", is(equalTo(VISIT_DESCRIPTION))))
-            .andExpect(jsonPath("$[0].petId", is(equalTo(pet.getId()))));
+            .andExpect(jsonPath("$[0].petId", is(equalTo(pet.getId()))))
+            .andExpect(jsonPath("$[0].ownerId", is(equalTo(owner.getId()))))
+            .andExpect(jsonPath("$[0].vet", is(nullValue())));
     }
 
     @Test
@@ -87,7 +96,9 @@ class VisitGlobalControllerTest extends IntegrationTest {
             .andExpect(jsonPath("$.id", is(equalTo(visit.getId()))))
             .andExpect(jsonPath("$.date", is(notNullValue())))
             .andExpect(jsonPath("$.description", is(equalTo(VISIT_DESCRIPTION))))
-            .andExpect(jsonPath("$.petId", is(equalTo(pet.getId()))));
+            .andExpect(jsonPath("$.petId", is(equalTo(pet.getId()))))
+            .andExpect(jsonPath("$.ownerId", is(equalTo(owner.getId()))))
+            .andExpect(jsonPath("$.vet", is(nullValue())));
     }
 
     @Test
@@ -127,6 +138,10 @@ class VisitGlobalControllerTest extends IntegrationTest {
             .andExpect(jsonPath("$.date", is(notNullValue())))
             .andExpect(jsonPath("$.description", is(equalTo(VISIT_DESCRIPTION))))
             .andExpect(jsonPath("$.petId", is(equalTo(pet.getId()))))
+            .andExpect(jsonPath("$.ownerId", is(equalTo(owner.getId()))))
+            .andExpect(jsonPath("$.vet", is(nullValue())))
+            .andExpect(jsonPath("$.diagnosis", is(nullValue())))
+            .andExpect(jsonPath("$.treatment", is(nullValue())))
             .andReturn()
             .getResponse()
             .getContentAsString();
@@ -157,6 +172,56 @@ class VisitGlobalControllerTest extends IntegrationTest {
         final String content = response.andReturn().getResponse().getContentAsString();
         final ErrorResponseResource error = fromJson(content, ErrorResponseResource.class);
         assertThat(error.getErrorMessage(), is(equalTo(PET_NOT_FOUND.getReason())));
+    }
+
+    @Test
+    @DisplayName("Should create visit with vet, diagnosis and treatment when provided")
+    void shouldCreateVisitWithVetDiagnosisAndTreatmentWhenProvided() throws Exception {
+        // Given: An owner with a pet exists and a create visit request with vet/diagnosis/treatment
+        final Owner owner = aSavedOwner();
+        final Pet pet = aSavedPet(owner);
+        final CreateVisitRequest request = aCreateVisitRequestWithPet(pet.getId())
+            .setVetId(SEEDED_VET_ID)
+            .setDiagnosis(VISIT_DIAGNOSIS)
+            .setTreatment(VISIT_TREATMENT);
+
+        // When: Creating the visit
+        // Then: Should return 201 with vet, diagnosis and treatment populated
+        mockMvc.perform(
+            post(VISITS)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(request))
+        )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.diagnosis", is(equalTo(VISIT_DIAGNOSIS))))
+            .andExpect(jsonPath("$.treatment", is(equalTo(VISIT_TREATMENT))))
+            .andExpect(jsonPath("$.vet.id", is(equalTo(SEEDED_VET_ID))))
+            .andExpect(jsonPath("$.vet.firstName", is(equalTo(SEEDED_VET_FIRST_NAME))))
+            .andExpect(jsonPath("$.vet.lastName", is(equalTo(SEEDED_VET_LAST_NAME))));
+    }
+
+    @Test
+    @DisplayName("Should return not found when vet does not exist for create visit")
+    void shouldReturnNotFoundWhenVetDoesNotExistForCreateVisit() throws Exception {
+        // Given: An owner with a pet exists and a create visit request with a non-existent vet ID
+        final Owner owner = aSavedOwner();
+        final Pet pet = aSavedPet(owner);
+        final CreateVisitRequest request = aCreateVisitRequestWithPet(pet.getId())
+            .setVetId(NON_EXISTENT_VET_ID);
+
+        // When: Creating visit with non-existent vet
+        final ResultActions response = mockMvc.perform(
+            post(VISITS)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(request))
+        );
+
+        // Then: Should return 404 with error message
+        response.andExpect(status().isNotFound());
+
+        final String content = response.andReturn().getResponse().getContentAsString();
+        final ErrorResponseResource error = fromJson(content, ErrorResponseResource.class);
+        assertThat(error.getErrorMessage(), is(equalTo(VET_NOT_FOUND.getReason())));
     }
 
     // ========================= UPDATE =========================
@@ -200,6 +265,57 @@ class VisitGlobalControllerTest extends IntegrationTest {
         final String content = response.andReturn().getResponse().getContentAsString();
         final ErrorResponseResource error = fromJson(content, ErrorResponseResource.class);
         assertThat(error.getErrorMessage(), is(equalTo(VISIT_NOT_FOUND.getReason())));
+    }
+
+    @Test
+    @DisplayName("Should update visit with vet, diagnosis and treatment when provided")
+    void shouldUpdateVisitWithVetDiagnosisAndTreatmentWhenProvided() throws Exception {
+        // Given: An existing visit in the database and an update request with vet/diagnosis/treatment
+        final Owner owner = aSavedOwner();
+        final Pet pet = aSavedPet(owner);
+        final Visit visit = aSavedVisit(pet);
+        final UpdateVisitRequest request = anUpdateVisitRequest()
+            .setVetId(SEEDED_VET_ID)
+            .setDiagnosis(VISIT_DIAGNOSIS)
+            .setTreatment(VISIT_TREATMENT);
+
+        // When: Updating the visit
+        // Then: Should return 200 OK with vet, diagnosis and treatment populated
+        mockMvc.perform(
+            put(VISIT_BY_ID, visit.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(request))
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.diagnosis", is(equalTo(VISIT_DIAGNOSIS))))
+            .andExpect(jsonPath("$.treatment", is(equalTo(VISIT_TREATMENT))))
+            .andExpect(jsonPath("$.vet.id", is(equalTo(SEEDED_VET_ID))))
+            .andExpect(jsonPath("$.vet.firstName", is(equalTo(SEEDED_VET_FIRST_NAME))))
+            .andExpect(jsonPath("$.vet.lastName", is(equalTo(SEEDED_VET_LAST_NAME))));
+    }
+
+    @Test
+    @DisplayName("Should return not found when vet does not exist for update visit")
+    void shouldReturnNotFoundWhenVetDoesNotExistForUpdateVisit() throws Exception {
+        // Given: An existing visit and an update request with a non-existent vet ID
+        final Owner owner = aSavedOwner();
+        final Pet pet = aSavedPet(owner);
+        final Visit visit = aSavedVisit(pet);
+        final UpdateVisitRequest request = anUpdateVisitRequest().setVetId(NON_EXISTENT_VET_ID);
+
+        // When: Updating visit with non-existent vet
+        final ResultActions response = mockMvc.perform(
+            put(VISIT_BY_ID, visit.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(request))
+        );
+
+        // Then: Should return 404 with error message
+        response.andExpect(status().isNotFound());
+
+        final String content = response.andReturn().getResponse().getContentAsString();
+        final ErrorResponseResource error = fromJson(content, ErrorResponseResource.class);
+        assertThat(error.getErrorMessage(), is(equalTo(VET_NOT_FOUND.getReason())));
     }
 
     // ========================= DELETE =========================

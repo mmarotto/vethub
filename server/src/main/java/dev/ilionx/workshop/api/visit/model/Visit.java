@@ -1,6 +1,7 @@
 package dev.ilionx.workshop.api.visit.model;
 
 import dev.ilionx.workshop.api.pet.model.Pet;
+import dev.ilionx.workshop.api.vet.model.Vet;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -40,11 +41,21 @@ public class Visit {
     @Column(name = "description")
     private String description;
 
+    @Column(name = "diagnosis")
+    private String diagnosis;
+
+    @Column(name = "treatment")
+    private String treatment;
+
     @ManyToOne
     @JoinColumn(
         name = "pet_id",
         nullable = false
     )
     private Pet pet;
+
+    @ManyToOne
+    @JoinColumn(name = "vet_id")
+    private Vet vet;
 
 }
