@@ -15,6 +15,14 @@
 
 	const petId = $derived(Number($page.params.id));
 
+	// Precomputed here (rather than inline in the template) so we never call
+	// a mutating array method (.sort()) directly on the reactive `pet.visits`
+	// state - doing that in markup re-triggers reactivity on every call and
+	// causes an infinite update loop. See AGENTS.md for the project convention.
+	const sortedVisits = $derived(
+		[...(pet?.visits ?? [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+	);
+
 	async function loadPet() {
 		loading = true;
 		try {
@@ -127,7 +135,7 @@
 			</div>
 		{:else}
 			<div class="space-y-4">
-				{#each [...pet.visits].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) as visit (visit.id)}
+				{#each sortedVisits as visit (visit.id)}
 					<Card.Root>
 						<Card.Content class="pt-6">
 							<div class="flex items-start gap-4">

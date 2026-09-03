@@ -32,6 +32,7 @@ Managed by `mise.toml` (Java Temurin 25, Bun 1.3.0, Node 22.20.0). It also sets
 - `bun run dev` / `bun run build` / `bun run preview`.
 - `bun run check` is the only verification script — `svelte-kit sync` + `svelte-check` (typecheck only; there is no lint config and no test runner in this package).
 - API types (`src/lib/types/api.d.ts`) and `server/openapi.json` are **generated, not hand-written** — regenerate via `bun run download:api` (backend must already be running) + `bun run generate:api`, or the full `bun run sync:api` pipeline (which currently fails due to the health-check bug above).
+- **Never call a mutating array method (`.sort()`, `.reverse()`, `.splice()`, etc.) directly on `$state` inside markup** (e.g. `{#each pet.visits.sort(...) as visit}`). This mutates the reactive array in place *during render*, which re-triggers reactivity on every call and causes an infinite update loop (symptom: the page looks stuck on a loading spinner, with no console error and no failed network request — `svelte-check` won't catch it either, since it's a runtime behavior bug, not a type error). It only manifests when the array is non-empty, so it's easy to miss if you only test with empty-state data. Always sort/reverse/splice a copy instead, ideally precomputed as its own `$derived` in `<script>` rather than inline in the template, e.g. `const sortedVisits = $derived([...pet.visits].sort(...))`.
 
 ## Cross-cutting
 
