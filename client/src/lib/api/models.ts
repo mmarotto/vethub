@@ -32,6 +32,7 @@ export type UpdatePetTypeRequest = components['schemas']['UpdatePetTypeRequest']
 // Vet Types
 // =============================================================================
 export type VetResponse = components['schemas']['VetResponse'];
+export type VetSummaryResponse = components['schemas']['VetSummaryResponse'];
 export type CreateVetRequest = components['schemas']['CreateVetRequest'];
 export type UpdateVetRequest = components['schemas']['UpdateVetRequest'];
 

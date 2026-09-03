@@ -2,10 +2,13 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { createVisitForPet } from '$lib/api/visit/VisitController';
+	import { getVets } from '$lib/api/vet/VetController';
+	import type { VetResponse } from '$lib/api/models';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
+	import * as Select from '$lib/components/ui/select';
 	import { ArrowLeft, Loader2 } from 'lucide-svelte';
 	import { toast } from 'svelte-sonner';
 
@@ -14,7 +17,26 @@
 
 	let visitDate = $state(new Date().toISOString().split('T')[0]);
 	let description = $state('');
+	let diagnosis = $state('');
+	let treatment = $state('');
+	let vets = $state<VetResponse[]>([]);
+	let selectedVetId = $state<number | undefined>(undefined);
 	let submitting = $state(false);
+
+	const selectedVet = $derived(vets.find((vet) => vet.id === selectedVetId));
+
+	async function loadVets() {
+		try {
+			vets = await getVets();
+		} catch (err) {
+			toast.error('Failed to load vets');
+			console.error('Error:', err);
+		}
+	}
+
+	$effect(() => {
+		loadVets();
+	});
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
@@ -23,7 +45,10 @@
 		try {
 			await createVisitForPet(ownerId, petId, {
 				date: visitDate,
-				description: description.trim()
+				description: description.trim(),
+				diagnosis: diagnosis.trim() || undefined,
+				treatment: treatment.trim() || undefined,
+				vetId: selectedVetId
 			});
 			toast.success('Visit recorded successfully');
 			goto(`/owners/${ownerId}/pets/${petId}`);
@@ -73,6 +98,46 @@
 					placeholder="Describe the reason for the visit (e.g., Annual checkup, Vaccination, etc.)"
 					rows={4}
 					required
+					disabled={submitting}
+				/>
+			</div>
+
+			<div class="space-y-2">
+				<Label for="vet">Vet (optional)</Label>
+				<Select.Root
+					type="single"
+					value={selectedVetId?.toString()}
+					onValueChange={(value) => (selectedVetId = value ? Number(value) : undefined)}
+				>
+					<Select.Trigger id="vet" class="w-full" disabled={submitting}>
+						{selectedVet ? `${selectedVet.firstName} ${selectedVet.lastName}` : 'Select a vet'}
+					</Select.Trigger>
+					<Select.Content>
+						{#each vets as vet (vet.id)}
+							<Select.Item value={vet.id.toString()}>
+								{vet.firstName} {vet.lastName}
+							</Select.Item>
+						{/each}
+					</Select.Content>
+				</Select.Root>
+			</div>
+
+			<div class="space-y-2">
+				<Label for="diagnosis">Diagnosis (optional)</Label>
+				<Input
+					id="diagnosis"
+					bind:value={diagnosis}
+					placeholder="e.g., Ear mites"
+					disabled={submitting}
+				/>
+			</div>
+
+			<div class="space-y-2">
+				<Label for="treatment">Treatment (optional)</Label>
+				<Input
+					id="treatment"
+					bind:value={treatment}
+					placeholder="e.g., Ear drops"
 					disabled={submitting}
 				/>
 			</div>

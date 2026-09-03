@@ -309,7 +309,7 @@ export interface paths {
         };
         /**
          * Get all pets
-         * @description Returns a list of all pets
+         * @description Returns a list of all pets, optionally filtered by name
          */
         get: operations["getAllPets"];
         put?: never;
@@ -505,53 +505,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/x-www-form-urlencoded": {
-                        username?: string;
-                        password?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -634,6 +587,41 @@ export interface components {
              * @example Follow-up checkup
              */
             description: string;
+            /**
+             * @description Diagnosis made during the visit
+             * @example Ear mites
+             */
+            diagnosis?: string;
+            /**
+             * @description Treatment given during the visit
+             * @example Ear drops
+             */
+            treatment?: string;
+            /**
+             * Format: int32
+             * @description ID of the vet who handled the visit
+             * @example 1
+             */
+            vetId?: number;
+        };
+        /** @description Summary of a vet within another response */
+        VetSummaryResponse: {
+            /**
+             * Format: int32
+             * @description The unique identifier of the vet
+             * @example 1
+             */
+            id: number;
+            /**
+             * @description The vet's first name
+             * @example James
+             */
+            firstName: string;
+            /**
+             * @description The vet's last name
+             * @example Carter
+             */
+            lastName: string;
         };
         /** @description Response containing visit details */
         VisitResponse: {
@@ -655,11 +643,29 @@ export interface components {
              */
             description: string;
             /**
+             * @description The diagnosis made during the visit, if recorded
+             * @example Ear mites
+             */
+            diagnosis?: string;
+            /**
+             * @description The treatment given during the visit, if recorded
+             * @example Ear drops
+             */
+            treatment?: string;
+            /**
              * Format: int32
              * @description The pet's unique identifier
              * @example 1
              */
             petId: number;
+            /**
+             * Format: int32
+             * @description The owner's unique identifier
+             * @example 1
+             */
+            ownerId: number;
+            /** @description The vet who handled the visit, if recorded */
+            vet?: components["schemas"]["VetSummaryResponse"];
         };
         /** @description Request to update an existing vet */
         UpdateVetRequest: {
@@ -808,6 +814,18 @@ export interface components {
              * @example Rabies shot
              */
             description: string;
+            /**
+             * @description The diagnosis made during the visit, if recorded
+             * @example Ear mites
+             */
+            diagnosis?: string;
+            /**
+             * @description The treatment given during the visit, if recorded
+             * @example Ear drops
+             */
+            treatment?: string;
+            /** @description The vet who handled the visit, if recorded */
+            vet?: components["schemas"]["VetSummaryResponse"];
         };
         /** @description Request to update an existing pet type */
         UpdatePetTypeRequest: {
@@ -920,11 +938,27 @@ export interface components {
              */
             description: string;
             /**
+             * @description Diagnosis made during the visit
+             * @example Ear mites
+             */
+            diagnosis?: string;
+            /**
+             * @description Treatment given during the visit
+             * @example Ear drops
+             */
+            treatment?: string;
+            /**
              * Format: int32
              * @description ID of the pet
              * @example 1
              */
             petId?: number;
+            /**
+             * Format: int32
+             * @description ID of the vet who handled the visit
+             * @example 1
+             */
+            vetId?: number;
         };
         /** @description Request to create a new vet */
         CreateVetRequest: {
@@ -3877,7 +3911,9 @@ export interface operations {
     };
     getAllPets: {
         parameters: {
-            query?: never;
+            query?: {
+                name?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
